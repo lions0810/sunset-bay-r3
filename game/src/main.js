@@ -15,12 +15,9 @@ function render() {
   const ctx = game.ctx;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawWorld(ctx, game);
-  ctx.save();
-  ctx.translate(-game.cam.x, -game.cam.y);
+  // The objective marker translates into world space itself, so it is
+  // called outside the entity pass's camera transform.
   drawObjectiveMarker(ctx, game);
-  // Objective marker is drawn in world space by render.js using its own
-  // camera translate; undo ours for the entity pass below.
-  ctx.restore();
 
   ctx.save();
   ctx.translate(-game.cam.x, -game.cam.y);
@@ -85,9 +82,8 @@ window.__SB = {
   snapshot: () => game.snapshot(),
   startNew: () => game.startGame(false),
   teleport: (x, y) => game.teleport(x, y),
+  // Walk the player to the mission-two target car's doorstep.
   enterTargetCar: () => {
-    game.teleport(PLACES_TP.x, PLACES_TP.y);
+    if (game.targetCar) game.teleport(game.targetCar.x - 30, game.targetCar.y);
   },
 };
-
-const PLACES_TP = { x: 640, y: 330 };

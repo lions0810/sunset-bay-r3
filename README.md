@@ -43,3 +43,12 @@ way the scorer rebuilds it.
 
 Screenshots in `screenshots/` are real renders of the game, staged with
 `?shot=title|drive|mission&seed=7` (see `shots.json`).
+
+## Verified
+
+A headless-Chrome playtest drove the full story chain end to end:
+First Run +$400, Borrowed Wheels +$900, Quiet Tail +$1,800,
+Heat Check +$2,400, Bay Payday +$4,000 (plus $25 per cash bag),
+finishing on the win card with $9,825 from a $250 start.
+`node main.ts` with `MAKEFUN_OUTPUT_DIR` set produces `dossier.json`
+with no errors, byte-identical across repeated runs.

@@ -69,4 +69,5 @@ export class SoundFX {
     notes.forEach((n, i) => this.tone(n, 0.18, 'sawtooth', 0.25, null, i * 0.13));
   }
   hurt() { this.tone(140, 0.12, 'sawtooth', 0.35, 70); }
+  horn() { this.tone(370, 0.16, 'square', 0.22); this.tone(466, 0.16, 'square', 0.18, null, 0.01); }
 }

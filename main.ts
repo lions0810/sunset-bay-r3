@@ -8,7 +8,7 @@
 // Run it locally the same way the grader does, with an output override:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -35,4 +35,5 @@ const dossier = buildDossier(outputDir, {
   game_path_max_bytes: 1000,
 });
 writeFileSync(join(outputDir, 'dossier.json'), dossier);
-console.log(`Sunset Bay dossier written to ${outputDir} (${dossier.length} bytes)`);
+const gameFileCount = readdirSync(join(outputDir, 'game'), { recursive: true }).length;
+console.log(`Sunset Bay dossier written to ${outputDir} (${dossier.length} bytes, ${gameFileCount} game entries)`);

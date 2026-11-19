@@ -84,6 +84,10 @@ export function missionByIndex(index) {
   return MISSIONS[index] || null;
 }
 
+export function rewardFor(index) {
+  return MISSION_REWARDS[index] || 0;
+}
+
 export function objectiveLabel(mission, objectiveIndex) {
   const obj = mission.objectives[objectiveIndex];
   if (!obj) return 'Free roam — the bay is yours';

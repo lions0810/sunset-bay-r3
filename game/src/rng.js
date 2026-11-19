@@ -46,6 +46,21 @@ export class Rng {
     return this.next() < probability;
   }
 
+  // A fair coin as a direction: +1 or -1, used for lane choices.
+  sign() {
+    return this.next() < 0.5 ? -1 : 1;
+  }
+
+  // Fisher-Yates shuffle driven by this stream, so it stays seeded.
+  shuffle(list) {
+    const out = [...list];
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(this.next() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
   // A soft pastel-to-sunset colour built from three channel ranges.
   colour(hueBase, hueSpread, sat, light) {
     const hue = Math.floor(hueBase + this.next() * hueSpread) % 360;

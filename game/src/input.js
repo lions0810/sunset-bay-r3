@@ -52,6 +52,10 @@ export class Input {
     return (this.down('KeyS', 'ArrowDown') ? 1 : 0) - (this.down('KeyW', 'ArrowUp') ? 1 : 0);
   }
 
+  isSprinting() {
+    return this.down('ShiftLeft', 'ShiftRight');
+  }
+
   // Called at the end of each frame so one-shot state never leaks.
   endFrame() {
     this.pressed.clear();

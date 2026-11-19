@@ -124,3 +124,15 @@ export function buildingAt(world, x, y) {
 // Spawn points that always sit in the middle of a road intersection.
 export const INTERSECTIONS = [];
 for (const x of AVENUES_X) for (const y of STREETS_Y) INTERSECTIONS.push({ x, y });
+
+// The intersection closest to a point - used to drop police spawns and
+// respawns onto guaranteed road instead of inside a city block.
+export function nearestIntersection(x, y) {
+  let best = INTERSECTIONS[0];
+  let bestD = Infinity;
+  for (const spot of INTERSECTIONS) {
+    const d = Math.hypot(spot.x - x, spot.y - y);
+    if (d < bestD) { bestD = d; best = spot; }
+  }
+  return best;
+}

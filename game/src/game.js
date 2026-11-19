@@ -6,7 +6,7 @@
 import { Rng, clamp, angleDelta, distance } from './rng.js';
 import {
   WORLD_W, WORLD_H, AVENUES_X, STREETS_Y,
-  generateWorld, collideBuildings, isRoadPoint,
+  generateWorld, collideBuildings, isRoadPoint, nearestIntersection,
 } from './world.js';
 import { MISSIONS, PLACES } from './missions.js';
 import { SoundFX } from './audio.js';
@@ -362,6 +362,11 @@ export class Game {
     const p = this.player;
     p.fireCooldown -= dt;
     p.hurtCooldown -= dt;
+    // Slow recovery once the player has been out of danger a while:
+    // five calm seconds, then health drifts back up. Keeps a bad
+    // chase from soft-locking the rest of the story chain.
+    this.calmT = (this.calmT || 0) + dt;
+    if (this.calmT > 5 && p.hp > 0 && p.hp < 100) p.hp = Math.min(100, p.hp + 3.2 * dt);
     if (p.inCar) {
       const car = p.inCar;
       const throttle = this.input.down('KeyW', 'ArrowUp');
@@ -396,8 +401,7 @@ export class Game {
     } else {
       const ax = this.input.axisX();
       const ay = this.input.axisY();
-      const sprint = this.input.down('ShiftLeft', 'ShiftRight');
-      const speed = sprint ? TUNING.sprintSpeed : TUNING.walkSpeed;
+      const speed = this.input.isSprinting() ? TUNING.sprintSpeed : TUNING.walkSpeed;
       p.moving = ax !== 0 || ay !== 0;
       if (p.moving) {
         const len = Math.hypot(ax, ay);
@@ -474,24 +478,30 @@ export class Game {
       if (car.kind === 'parked' || car.kind === 'target') continue;
       if (car.driver !== 'ai') continue;
       car.turnCooldown -= dt;
-      // Slow for a car ahead in the same lane.
+      if (car.roadC === undefined) car.roadC = car.axis === 'x' ? Math.round((car.y - car.dir * car.lane) / 1) : Math.round(car.x + car.dir * car.lane);
+      // Slow for a car ahead in the same lane; honk if it is the player
+      // blocking the avenue.
       let target = car.baseSpeed;
       for (const other of this.cars) {
         if (other === car) continue;
         const ahead = car.axis === 'x'
           ? Math.abs(other.y - car.y) < 16 && (other.x - car.x) * car.dir > 0 && (other.x - car.x) * car.dir < 58
           : Math.abs(other.x - car.x) < 16 && (other.y - car.y) * car.dir > 0 && (other.y - car.y) * car.dir < 58;
-        if (ahead) target = Math.min(target, Math.max(0, Math.abs(other.speed) - 8));
+        if (ahead) {
+          target = Math.min(target, Math.max(0, Math.abs(other.speed) - 8));
+          if (other === this.player.inCar && Math.random() < dt * 0.4) this.sfx.horn();
+        }
       }
       car.brake = car.speed > target + 12;
       car.speed += clamp(target - car.speed, -260 * dt, 150 * dt);
       if (car.axis === 'x') {
         car.x += car.dir * car.speed * dt;
-        car.y = (car.axisY ?? car.y);
+        car.y = car.roadC + car.dir * car.lane;
         // Possible turn at an avenue crossing.
         for (const ax of AVENUES_X) {
           if (Math.abs(car.x - ax) < 5 && car.turnCooldown <= 0 && Math.random() < 0.30) {
             car.axis = 'y';
+            car.roadC = ax;
             car.dir = Math.random() < 0.5 ? 1 : -1;
             car.x = ax + (car.dir > 0 ? -car.lane : car.lane);
             car.angle = car.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -499,13 +509,20 @@ export class Game {
             break;
           }
         }
-        if (car.x < 50 || car.x > WORLD_W - 50) { car.dir *= -1; car.y += car.dir * 0 + (car.dir > 0 ? 42 : -42) * 0; car.angle = car.dir > 0 ? 0 : Math.PI; car.y = Math.round((car.y - 21) / 1) ; car.x = clamp(car.x, 50, WORLD_W - 50); }
+        if (car.x < 50 || car.x > WORLD_W - 50) {
+          // U-turn onto the opposite lane of the same street.
+          car.dir *= -1;
+          car.x = clamp(car.x, 50, WORLD_W - 50);
+          car.y = car.roadC + car.dir * car.lane;
+        }
         car.angle = car.dir > 0 ? 0 : Math.PI;
       } else {
         car.y += car.dir * car.speed * dt;
+        car.x = car.roadC + (car.dir > 0 ? -car.lane : car.lane);
         for (const sy of STREETS_Y) {
           if (Math.abs(car.y - sy) < 5 && car.turnCooldown <= 0 && Math.random() < 0.30) {
             car.axis = 'x';
+            car.roadC = sy;
             car.dir = Math.random() < 0.5 ? 1 : -1;
             car.y = sy + car.dir * car.lane;
             car.angle = car.dir > 0 ? 0 : Math.PI;
@@ -513,7 +530,11 @@ export class Game {
             break;
           }
         }
-        if (car.y < 50 || car.y > WORLD_H - 190) { car.dir *= -1; car.angle = car.dir > 0 ? Math.PI / 2 : -Math.PI / 2; car.x += car.dir > 0 ? -42 : 42; car.y = clamp(car.y, 50, WORLD_H - 190); }
+        if (car.y < 50 || car.y > WORLD_H - 190) {
+          car.dir *= -1;
+          car.y = clamp(car.y, 50, WORLD_H - 190);
+          car.x = car.roadC + (car.dir > 0 ? -car.lane : car.lane);
+        }
         car.angle = car.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
       }
       car.x = clamp(car.x, 30, WORLD_W - 30);
@@ -531,12 +552,7 @@ export class Game {
       const y = clamp(this.player.y + Math.sin(a) * d, 60, WORLD_H - 200);
       if (!isRoadPoint(x, y)) {
         // Nudge spawns onto the nearest intersection.
-        const near = { x: AVENUES_X[0], y: STREETS_Y[0] };
-        let bd = 1e9;
-        for (const ax of AVENUES_X) for (const sy of STREETS_Y) {
-          const dd = Math.hypot(ax - x, sy - y);
-          if (dd < bd) { bd = dd; near.x = ax; near.y = sy; }
-        }
+        const near = nearestIntersection(x, y);
         this.police.push(this.makeCop(near.x, near.y));
       } else this.police.push(this.makeCop(x, y));
     }
@@ -594,6 +610,7 @@ export class Game {
   damagePlayer(amount, fromCrash) {
     const p = this.player;
     if (p.hurtCooldown > 0 && fromCrash) return;
+    if (amount > 0) this.calmT = 0;
     p.hp -= amount;
     p.hurtCooldown = 0.5;
     this.sfx.hurt();

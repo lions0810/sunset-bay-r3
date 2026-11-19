@@ -35,3 +35,13 @@ canvas#game {
   letter-spacing: 0.02em;
   opacity: 0.85;
 }
+canvas#game:focus-visible {
+  outline: 3px solid #ffd94d;
+  outline-offset: 3px;
+}
+@media (max-width: 560px) {
+  #hint {
+    font-size: 11px;
+    padding: 0 8px;
+  }
+}

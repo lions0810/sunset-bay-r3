@@ -133,6 +133,18 @@ export function drawObjectiveMarker(ctx, game) {
   grad.addColorStop(1, 'rgba(255,217,77,0.30)');
   ctx.fillStyle = grad;
   ctx.fillRect(obj.at.x - 9, obj.at.y - 190, 18, 190);
+  if (obj.type === 'collect') {
+    // Cash-bag marker: a green sack with a dollar sign at the goal.
+    ctx.fillStyle = '#2f9e5f';
+    ctx.beginPath();
+    ctx.arc(obj.at.x, obj.at.y - 4, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 19px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('$', obj.at.x, obj.at.y + 3);
+    ctx.textAlign = 'left';
+  }
   ctx.restore();
 }
 
